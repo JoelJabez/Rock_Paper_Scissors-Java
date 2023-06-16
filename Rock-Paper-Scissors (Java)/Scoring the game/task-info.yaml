@@ -1,0 +1,201 @@
+type: edu
+files:
+- name: src/rockpaperscissors/Main.java
+  visible: true
+  text: |
+    package rockpaperscissors;
+
+    public class Main {
+        public static void main(String[] args) {
+            // write your code here
+        }
+    }
+  learner_created: false
+- name: test/Tests.java
+  visible: false
+  text: |-
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.testcase.TestCase;
+
+    import java.util.ArrayList;
+    import java.util.List;
+
+    public class Tests extends StageTest<String> {
+        String[] cases = new String[]{"rock",
+                "paper",
+                "scissors"};
+        int loses = 0;
+        int wins = 0;
+        int draws = 0;
+        String fileName = "rating.txt";
+        int startScore = 350;
+        String userName = "Bob";
+
+        CheckResult checkInvalidInput(String reply, String attach) {
+            if (!reply.toLowerCase().contains("invalid"))
+                return CheckResult.wrong("Looks like your program doesn't handle invalid inputs correctly.\n" +
+                        "You should print 'Invalid input' if the input can't be processed.");
+            return CheckResult.correct();
+        }
+
+        CheckResult checkValidInputs(String reply, String attach) {
+            int results = 0;
+            int attachInt = Integer.parseInt(attach);
+            for (String s : reply.toLowerCase().split("\n")) {
+                if (s.contains("sorry"))
+                    results++;
+                if (s.contains("draw"))
+                    results++;
+                if (s.contains("well done"))
+                    results++;
+            }
+            if (results != attachInt) {
+                return CheckResult.wrong(String.format(
+                        "Not enough results of the games were printed!\n" +
+                                "Tried to input %s actions and got %s results of the games.\n" +
+                                "Perhaps your program did not run enough games. " +
+                                "Is it set up correctly to loop until the user inputs ‘!exit’? \n" +
+                                "Also, make sure you print the result  " +
+                                "of the game in the correct format after each valid input!",
+                        attach, results));
+            }
+            return CheckResult.correct();
+        }
+
+        CheckResult checkResults(String reply, String attach) {
+            for (String s : reply.toLowerCase().split("\n")) {
+                if (s.contains("sorry"))
+                    loses++;
+                else if (s.contains("draw"))
+                    draws++;
+                else if (s.contains("well done"))
+                    wins++;
+            }
+            CheckResult wrongRandomize = CheckResult.wrong(String.format(
+                    "The results of the games: %s wins, %s draws and %s loses\n" +
+                            "The game is too easy to win. Is the computer being too predictable? " +
+                            "The number of wins, draws and loses should be approximately the same.\n" +
+                            "Perhaps you don't use the random module to choose random option.\n" +
+                            "Also, make sure you output the results of the games " +
+                            "the same way as was stated in the examples!\n" +
+                            "If you are sure that you use the random module, try to rerun the tests!\n",
+                    wins, draws, loses));
+
+            if (loses < 20)
+                return wrongRandomize;
+            if (draws < 20)
+                return wrongRandomize;
+            if (wins < 20)
+                return wrongRandomize;
+
+            return CheckResult.correct();
+
+        }
+
+        public List<TestCase<String>> generate() {
+            String[] validInputCases = {String.format(
+                    "%s\nrock\npaper\nscissors\npaper\nscissors\nrock\npaper\nscissors\n!exit", userName),
+                    String.format("%s\nscissors\nscissors\nscissors\n!exit", userName)};
+            String[] invalidInputCases = {String.format("%s\nrock\npaper\npaper\nscissors\nblabla\n!exit", userName),
+                    String.format("%s\nrock\ninvalid\n!exit", userName),
+                    String.format("%s\nrock\nrock\nrock\nrock-n-roll\n!exit", userName)};
+            List<TestCase<String>> tests = new ArrayList<>();
+            //Cases that checks multiple input
+            for (String input : validInputCases) {
+                TestCase<String> testCase = new TestCase<>();
+                testCase.setCheckFunc(this::checkValidInputs);
+                testCase.setAttach(String.valueOf(input.split("\n").length - 2));
+                testCase.setInput(input);
+                testCase.addFile(fileName, String.format("%s %s\nJane 200\nAlex 400", userName, startScore));
+                tests.add(testCase);
+            }
+            //Cases that check invalid input
+            for (String input : invalidInputCases) {
+                TestCase<String> testCase = new TestCase<>();
+                testCase.setCheckFunc(this::checkInvalidInput);
+                testCase.setInput(input);
+                testCase.addFile(fileName, String.format("%s %s\nJane 200\nAlex 400", userName, startScore));
+                tests.add(testCase);
+            }
+            //Cases that check using random module
+            String longInput = String.format("%s\n", userName) + "rock\n".repeat(100) +
+                    "!exit";
+            TestCase<String> testCase = new TestCase<>();
+            testCase.setCheckFunc(this::checkResults);
+            testCase.setAttach("rock");
+            testCase.setInput(longInput);
+            testCase.addFile(fileName, String.format("%s %s\nJane 200\nAlex 400", userName, startScore));
+            tests.add(testCase);
+            //Case that checks prints in file
+            String[] temp = longInput.split("\n");
+            temp[temp.length - 2] = "!rating";
+            StringBuilder sb = new StringBuilder();
+            for (String t : temp) {
+                sb.append(t);
+                sb.append("\n");
+            }
+            longInput = sb.toString();
+            testCase = new TestCase<>();
+            testCase.setCheckFunc(this::checkFile);
+            testCase.setAttach("rock");
+            testCase.setInput(longInput);
+            testCase.addFile(fileName, String.format("%s %s\nJane 200\nAlex 400", userName, startScore));
+            tests.add(testCase);
+            return tests;
+
+        }
+
+        CheckResult checkFile(String reply, String attach) {
+            if (!reply.toLowerCase().contains("enter your name"))
+                return CheckResult.wrong(
+                        "Seems like you did not offer the user to input their name. " +
+                                "Your program should output \"Enter your name:\" before the start of the game.\n");
+            if (!reply.toLowerCase().contains(String.format("hello, %s", userName).toLowerCase()))
+                return CheckResult.wrong(
+                        "Seems like you did not greet the user. " +
+                                "Your program should output \"Hello, <user_name>\"\n");
+            for (String line : reply.split("\n")) {
+                String lowerLine = line.toLowerCase();
+                if (lowerLine.contains("well done") && !lowerLine.contains("scissors"))
+                    return CheckResult.wrong(String.format(
+                            "Wrong result of the game:\n> rock\n%s\nRock can only beat scissors!", line));
+                else if (lowerLine.contains("draw") && !lowerLine.contains("rock"))
+                    return CheckResult.wrong(String.format(
+                            "Wrong result of the game:\n> rock\n%s\n" +
+                                    "The game ends with a draw only when user option and computer choose the same option",
+                            line));
+                else if (lowerLine.contains("sorry") && !lowerLine.contains("paper"))
+                    return CheckResult.wrong(String.format(
+                            "Wrong result of the game:\n> " +
+                                    "rock\n%s\nOnly paper can beat rock!", line));
+            }
+            draws = 0;
+            loses = 0;
+            wins = 0;
+            for (String s : reply.toLowerCase().split("\n")) {
+                if (s.contains("sorry")) {
+                    loses++;
+                } else if (s.contains("draw")) {
+                    draws++;
+                } else if (s.contains("well done"))
+                    wins++;
+            }
+            int correctPoints = startScore + wins * 100 + draws * 50;
+            if (!reply.contains(String.valueOf(correctPoints)))
+                return CheckResult.wrong("Looks like you incorrectly calculated the player's score!\n" +
+                        "Make sure that you took into account the user's initial score written in the file.\n" +
+                        "For each draw, add 50 point to the score. For each user's win, add 100 to his/her score.\n" +
+                        "In case the user loses, don't change the score. ");
+            return CheckResult.correct();
+
+        }
+    }
+  learner_created: false
+feedback_link: https://hyperskill.org/learn/step/24618#comment
+status: Solved
+feedback:
+  message: Well done! You've finished the project. Select a new project on <a href="https://hyperskill.org/projects">Hyperskill</a>
+    to continue learning.
+  time: "Fri, 16 Jun 2023 02:19:50 UTC"
+record: 4
